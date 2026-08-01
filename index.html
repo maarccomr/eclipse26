@@ -24,11 +24,15 @@
         #map { height: 420px; width: 100%; border-radius: 1rem; background: #0a0a0a; z-index: 10; }
         .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #1e1b4b; color: #fff; border: 1px solid #4f46e5; }
 
-        .visor-container { position: relative; overflow: hidden; height: 350px; display: flex; justify-content: center; align-items: center; border-radius: 1rem; transition: background 0.3s; }
+        .visor-container { position: relative; overflow: hidden; height: 350px; display: flex; justify-content: center; align-items: center; border-radius: 1rem; transition: background 0.3s; background: linear-gradient(to bottom, #1e3a8a, #000000); }
         #ar-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; display: none; transform: scaleX(-1); }
         .sun { position: absolute; z-index: 1; width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle, #fffbe0 0%, #fcd34d 40%, #ea580c 100%); box-shadow: 0 0 50px rgba(234, 88, 12, 0.5), 0 0 100px rgba(234, 88, 12, 0.2); }
         .moon { position: absolute; z-index: 2; width: 142px; height: 142px; border-radius: 50%; background: #050505; box-shadow: inset -10px 0 20px rgba(255,255,255,0.05); transform: translate(300px, -300px); }
         .moon.ar-active { background: #000; box-shadow: none; }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%; background: #f59e0b; cursor: pointer; margin-top: -10px; box-shadow: 0 0 10px rgba(245, 158, 11, 0.6); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #374151; border-radius: 3px; }
     </style>
 </head>
 <body class="p-4 lg:p-8">
@@ -71,50 +75,65 @@
 
         <!-- MÓDULO PRINCIPAL: MAPA Y VISOR -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- PANEL MAPA -->
-            <div class="glass p-5 rounded-2xl flex flex-col">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        Mapa Satelital Activo
-                    </h2>
-                    <span class="text-xs text-gray-400">52 Provincias</span>
+            <!-- PANEL MAPA Y LÍNEA DE TIEMPO -->
+            <div class="glass p-5 rounded-2xl flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            Cartografía Interactiva
+                        </h2>
+                        <span class="text-xs text-gray-400">52 Provincias</span>
+                    </div>
+                    <div id="map" class="shadow-inner border border-gray-800"></div>
                 </div>
-                <div id="map" class="shadow-inner border border-gray-800"></div>
-                <p class="text-xs text-gray-400 mt-4 text-center">Navega por el mapa y selecciona cualquier capital de provincia para extraer la telemetría.</p>
+                
+                <!-- CONTROLES TEMPORALES -->
+                <div class="mt-6 bg-black/40 border border-gray-700 p-4 rounded-xl">
+                    <div class="flex justify-between text-xs text-gray-400 mb-2 font-bold tracking-widest">
+                        <span>19:30</span>
+                        <span id="slider-time-display" class="text-yellow-400 text-lg">20:27 CEST</span>
+                        <span>21:20</span>
+                    </div>
+                    
+                    <input type="range" id="time-slider" min="0" max="110" value="57" oninput="scrubTime(this.value)">
+                    
+                    <!-- NUEVO: BOTÓN DE SALTO AUTOMÁTICO -->
+                    <div class="mt-4 flex justify-center border-t border-gray-800 pt-3">
+                        <button id="btn-quick-max" onclick="jumpToMax()" class="bg-indigo-600/20 hover:bg-indigo-600/50 border border-indigo-500/30 text-indigo-300 text-[11px] uppercase tracking-widest font-bold py-2 px-5 rounded-full transition-all shadow-lg shadow-indigo-500/10">
+                            ⚡ Saltar al Máximo Local (20:27)
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <!-- PANEL VISOR Y TELEMETRÍA -->
+            <!-- PANEL VISOR ÓPTICO Y TELEMETRÍA -->
             <div class="flex flex-col gap-6">
                 <div class="glass p-5 rounded-2xl">
                     <div class="flex justify-between items-end mb-4">
                         <div>
-                            <h2 class="text-lg font-semibold text-white mb-1">Simulación Óptica</h2>
+                            <h2 class="text-lg font-semibold text-white mb-1">Visor Atmosférico <span class="text-xs font-normal text-gray-400">(Sincronizado)</span></h2>
                             <p class="text-xs text-indigo-300" id="ui-city-name">Ubicación: Madrid</p>
                         </div>
-                        <button onclick="toggleAR()" id="btn-ar" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg transition-all flex items-center gap-2">
-                            📹 Activar Visor AR
+                        <button onclick="toggleAR()" id="btn-ar" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/30">
+                            📹 Modo Cámara (AR)
                         </button>
                     </div>
 
-                    <div id="visor-bg" class="visor-container bg-black border border-gray-800">
+                    <div id="visor-bg" class="visor-container border border-gray-800">
                         <video id="ar-video" autoplay playsinline></video>
                         <div class="sun"></div>
                         <div id="moon" class="moon"></div>
                     </div>
-
-                    <button onclick="ejecutarSimulacion()" id="btn-sim" class="w-full mt-4 bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-400 hover:to-pink-500 text-white font-bold py-3 px-4 rounded-xl transition shadow-lg tracking-wide uppercase text-sm">
-                        ▶ Iniciar Tránsito Lunar
-                    </button>
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="glass p-4 rounded-xl text-center border-t-2 border-t-orange-500">
-                        <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-widest">Magnitud</div>
+                        <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-widest">Magnitud Max.</div>
                         <div id="ui-mag" class="data-font text-2xl font-bold text-white">99.9%</div>
                     </div>
                     <div class="glass p-4 rounded-xl text-center border-t-2 border-t-indigo-500">
-                        <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-widest">Máximo</div>
+                        <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-widest">Hora Punta</div>
                         <div id="ui-time" class="data-font text-2xl font-bold text-white">20:27</div>
                         <div class="text-[9px] text-indigo-300 mt-1">Ini: <span id="ui-start">19:30</span> | Fin: <span id="ui-end">21:20</span></div>
                     </div>
@@ -135,7 +154,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN DE INFORMACIÓN Y CURIOSIDADES -->
+        <!-- SECCIÓN DE INFORMACIÓN ORIGINAL -->
         <section class="glass p-6 md:p-8 rounded-2xl mt-8">
             <h2 class="text-2xl font-bold mb-6 border-b border-gray-800 pb-4">Fenómeno Astronómico 2026: Lo que debes saber</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -157,42 +176,79 @@
             </div>
         </section>
 
+        <!-- SECCIÓN DE TIENDA AFILIADOS -->
+        <section class="glass p-6 md:p-8 rounded-2xl mt-8 border-l-4 border-l-indigo-500">
+            <h2 class="text-2xl font-bold mb-6 border-b border-gray-800 pb-4">Material de Observación Recomendado</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <div class="bg-black/30 border border-gray-800 p-6 rounded-xl flex flex-col justify-between shadow-lg">
+                    <div>
+                        <div class="text-3xl mb-3">👓</div>
+                        <h3 class="text-xl font-bold text-white mb-2">Gafas de Eclipse Certificadas</h3>
+                        <p class="text-sm text-gray-400 leading-relaxed mb-6">Equipamiento obligatorio con filtro solar ISO 12312-2. Evita falsificaciones asegurándote de comprar a través de enlaces verificados.</p>
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <a href="TU_ENLACE_DE_GAFAS_AQUI" target="_blank" class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:scale-105 text-black font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
+                            <span>🛒 Amazon</span>
+                            <span class="text-[10px] uppercase tracking-wider bg-black/20 px-2 py-1 rounded">Envío Rápido</span>
+                        </a>
+                        <a href="TU_ENLACE_ALIEXPRESS_AQUI" target="_blank" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:scale-105 text-white font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
+                            <span>🛒 AliExpress</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-black/30 border border-gray-800 p-6 rounded-xl flex flex-col justify-between shadow-lg">
+                    <div>
+                        <div class="text-3xl mb-3">📷</div>
+                        <h3 class="text-xl font-bold text-white mb-2">Filtros Fotográficos Solares</h3>
+                        <p class="text-sm text-gray-400 leading-relaxed mb-6">Láminas especiales para adaptar a objetivos de cámaras réflex o móviles. Esencial para no fundir el sensor al hacer fotos.</p>
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <a href="TU_ENLACE_DE_FILTROS_AQUI" target="_blank" class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:scale-105 text-black font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
+                            <span>🛒 Amazon</span>
+                            <span class="text-[10px] uppercase tracking-wider bg-black/20 px-2 py-1 rounded">Envío Rápido</span>
+                        </a>
+                        <a href="TU_ENLACE_ALIEXPRESS_AQUI" target="_blank" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:scale-105 text-white font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
+                            <span>🛒 AliExpress</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- SECCIÓN DE CONTACTO -->
         <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="glass p-6 md:p-8 rounded-2xl">
                 <h3 class="text-xl font-bold mb-2">Contacto y Sugerencias</h3>
                 <p class="text-sm text-gray-400 mb-6">¿Quieres colaborar, reportar un bug en el visor o anunciar tu marca durante el evento? Escríbenos.</p>
-                <form class="space-y-4" onsubmit="event.preventDefault(); alert('Este es un formulario de prueba.');">
-                    <input type="email" placeholder="Tu correo electrónico" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition">
-                    <textarea placeholder="Mensaje..." rows="3" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition"></textarea>
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition">Enviar Mensaje</button>
-                </form>
+                <!-- Fíjate que hemos añadido el action, el method="POST", los "name" y "required" -->
+<form class="space-y-4" action="https://formspree.io/f/mgogjynp" method="POST">
+    <input type="email" name="email" required placeholder="Tu correo electrónico" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition">
+    <textarea name="mensaje" required placeholder="Mensaje..." rows="3" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition"></textarea>
+    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition">Enviar Mensaje</button>
+</form>
+
             </div>
-            
             <div class="glass p-6 md:p-8 rounded-2xl flex flex-col justify-center items-center text-center">
                 <h3 class="text-xl font-bold mb-2">Soporte del Proyecto</h3>
-                <p class="text-sm text-gray-400 mb-6">EclipseTracker es una herramienta gratuita. Si te ha sido útil, ayúdanos a mantener los servidores compartiendo la web.</p>
-                <div class="w-full h-32 rounded-xl ad-space">
-                    Bloque Publicitario (AdSense / Banner Patrocinador)
-                </div>
+                <div class="w-full h-32 rounded-xl ad-space mt-4">Bloque Publicitario (AdSense)</div>
             </div>
         </section>
 
-        <!-- FOOTER -->
         <footer class="text-center text-xs text-gray-600 py-6">
-            <p>📍 Desarrollado en Madrid, España. Datos astronómicos simulados para el 12 de Agosto de 2026.</p>
+            <p>📍 Desarrollado en España. Datos astronómicos simulados para el 12 de Agosto de 2026.</p>
         </footer>
 
     </div>
 
-    <!-- AQUÍ EMPIEZA EL SCRIPT DE LÓGICA -->
+    <!-- SCRIPT DE LÓGICA -->
     <script>
         const targetDate = new Date('August 12, 2026 19:30:00').getTime();
         function updateCountdown() {
             const now = new Date().getTime();
             const distance = targetDate - now;
             if (distance < 0) return;
-            
             document.getElementById('cd-days').innerText = Math.floor(distance / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
             document.getElementById('cd-hours').innerText = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
             document.getElementById('cd-mins').innerText = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
@@ -268,8 +324,9 @@
 
         let curData = provincias.find(p => p.id === 'madrid'); 
         let isAR = false;
-        let animando = false;
+        let localMaxMins = 57; // Default Madrid (20:27 -> 57 mins desde las 19:30)
 
+        // MAPA
         const map = L.map('map', { zoomControl: true }).setView([40.0, -3.0], 5);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 10 }).addTo(map);
 
@@ -280,65 +337,106 @@
             marker.on('click', () => { curData = prov; actualizarPanel(); map.flyTo([prov.lat, prov.lng], 7, { duration: 1.2 }); });
         });
 
+        // NUEVO: DOBLE CAPA DE SOMBRA (PENUMBRA + UMBRA CON DATOS)
+        const penumbraCircle = L.circle([44, -12], {
+            color: 'transparent',
+            fillColor: '#000000',
+            fillOpacity: 0.3,
+            radius: 400000 // 400km (Penumbra exterior)
+        }).addTo(map);
+
+        const umbraCircle = L.circle([44, -12], {
+            color: '#f59e0b',
+            weight: 1,
+            fillColor: '#000000',
+            fillOpacity: 0.8,
+            radius: 80000 // 80km (Franja de totalidad aprox 160km diámetro)
+        }).addTo(map);
+        
+        umbraCircle.bindTooltip(`
+            <div class='text-center'>
+                <span class='font-bold text-yellow-500'>🌑 Núcleo (Umbra)</span><br>
+                Vel. Trayectoria: ~3.100 km/h<br>
+                Diámetro: ~160 km
+            </div>
+        `, { sticky: true });
+
+        // LÓGICA DEL SLIDER
+        function scrubTime(val) {
+            const minutesFromStart = parseInt(val);
+            let h = 19 + Math.floor((30 + minutesFromStart) / 60);
+            let m = (30 + minutesFromStart) % 60;
+            document.getElementById('slider-time-display').innerText = `${h}:${m.toString().padStart(2, '0')} CEST`;
+
+            const startLat = 44.5, startLng = -12;
+            const endLat = 38.0, endLng = 5.0;
+            
+            const progress = minutesFromStart / 110;
+            const currentLat = startLat + (endLat - startLat) * progress;
+            const currentLng = startLng + (endLng - startLng) * progress;
+            
+            // Actualizar ambas capas de la sombra
+            penumbraCircle.setLatLng([currentLat, currentLng]);
+            umbraCircle.setLatLng([currentLat, currentLng]);
+
+            const visorBg = document.getElementById('visor-bg');
+            const moon = document.getElementById('moon');
+            
+            const offsetX = -300 + (600 * progress);
+            const diametroSol = 140;
+            const yOffsetCity = diametroSol * (1 - curData.mag); 
+            
+            moon.style.transition = 'none';
+            moon.style.transform = `translate(${offsetX}px, ${-yOffsetCity}px)`;
+
+            const distanciaPunta = Math.abs(localMaxMins - minutesFromStart);
+            if (distanciaPunta < 10 && curData.mag > 0.9) {
+                visorBg.style.background = 'linear-gradient(to bottom, #020617, #000000)';
+            } else {
+                visorBg.style.background = 'linear-gradient(to bottom, #1e3a8a, #000000)';
+            }
+        }
+
+        // LÓGICA DE ACTUALIZACIÓN DEL PANEL
         function actualizarPanel() {
             document.getElementById('ui-city-name').innerText = `Ubicación: ${curData.name}`;
             document.getElementById('ui-mag').innerText = `${(curData.mag * 100).toFixed(1)}%`;
             document.getElementById('ui-time').innerText = curData.time;
-            document.getElementById('ui-start').innerText = curData.start;
-            document.getElementById('ui-end').innerText = curData.end;
+            
+            // Recalcular el valor exacto del slider para la hora máxima de esta ciudad
+            let [h, m] = curData.time.split(':').map(Number);
+            localMaxMins = (h - 19) * 60 + (m - 30); // Minutos transcurridos desde las 19:30
+            
+            // Actualizar el texto del botón de Salto Rápido
+            document.getElementById('btn-quick-max').innerText = `⚡ Saltar al Máximo Local (${curData.time})`;
             
             const uiType = document.getElementById('ui-type');
             const uiAlertBox = document.getElementById('ui-alert-box');
-            const uiAlertTitle = document.getElementById('ui-alert-title');
-            const uiAlert = document.getElementById('ui-alert');
             
             if (curData.mag === 1) {
                 uiType.innerText = "TOTALIDAD MÁXIMA";
                 uiType.className = "text-lg font-bold text-yellow-400 mt-1 animate-pulse";
-                uiAlertTitle.innerText = "FASE SEGURA ALCANZADA";
-                uiAlertTitle.className = "text-xs font-bold text-green-400 uppercase";
-                uiAlert.innerText = "Puede retirar las gafas únicamente durante los segundos de oscuridad total.";
                 uiAlertBox.className = "glass p-4 rounded-xl col-span-2 md:col-span-4 bg-green-900/20 border-t-2 border-t-green-500";
+                document.getElementById('ui-alert-title').innerText = "Fase Segura Alcanzada";
+                document.getElementById('ui-alert-title').className = "text-xs font-bold text-green-400 uppercase";
+                document.getElementById('ui-alert').innerText = "Puede retirar las gafas durante la oscuridad total.";
             } else {
                 uiType.innerText = curData.mag > 0.95 ? "PARCIAL PROFUNDO" : "PARCIAL";
                 uiType.className = "text-lg font-bold text-yellow-400 mt-1";
-                uiAlertTitle.innerText = "Protocolo de Seguridad Ocular";
-                uiAlertTitle.className = "text-xs font-bold text-red-400 uppercase";
-                uiAlert.innerText = "Gafas ISO 12312-2 obligatorias en todo momento. No hay totalidad.";
                 uiAlertBox.className = "glass p-4 rounded-xl col-span-2 md:col-span-4 bg-red-900/20 border-t-2 border-t-red-500";
+                document.getElementById('ui-alert-title').innerText = "Seguridad Ocular";
+                document.getElementById('ui-alert-title').className = "text-xs font-bold text-red-400 uppercase";
+                document.getElementById('ui-alert').innerText = "Gafas ISO obligatorias en todo momento. No hay totalidad.";
             }
-            const moon = document.getElementById('moon');
-            moon.style.transition = 'none';
-            moon.style.transform = `translate(300px, -300px)`;
+
+            const sliderVal = document.getElementById('time-slider').value;
+            scrubTime(sliderVal);
         }
 
-        function ejecutarSimulacion() {
-            if (animando) return;
-            animando = true;
-            const btn = document.getElementById('btn-sim');
-            btn.innerText = "⚙ Calculando y ejecutando órbita...";
-            btn.classList.add('opacity-50', 'cursor-not-allowed');
-
-            const moon = document.getElementById('moon');
-            const diametroSol = 140;
-            const offsetPixeles = diametroSol * (1 - curData.mag); 
-            
-            moon.style.transition = 'none';
-            moon.style.transform = `translate(300px, -300px)`;
-            
-            setTimeout(() => {
-                moon.style.transition = 'transform 3.5s linear';
-                moon.style.transform = `translate(${offsetPixeles}px, -${offsetPixeles}px)`;
-                setTimeout(() => {
-                    moon.style.transition = 'transform 3.5s linear';
-                    moon.style.transform = `translate(-300px, 300px)`;
-                    setTimeout(() => { 
-                        animando = false; 
-                        btn.innerText = "▶ Iniciar Tránsito Lunar"; 
-                        btn.classList.remove('opacity-50', 'cursor-not-allowed'); 
-                    }, 3500);
-                }, 4500);
-            }, 50);
+        // NUEVO: FUNCIÓN PARA SALTAR DIRECTO AL MÁXIMO
+        function jumpToMax() {
+            document.getElementById('time-slider').value = localMaxMins;
+            scrubTime(localMaxMins);
         }
 
         let stream = null;
@@ -353,27 +451,30 @@
                     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                     videoElement.srcObject = stream;
                     videoElement.style.display = 'block';
-                    container.classList.remove('bg-black');
-                    container.classList.add('bg-transparent');
+                    container.style.background = 'transparent';
                     moon.classList.add('ar-active');
                     btn.innerHTML = "❌ Cerrar Visor AR";
                     btn.classList.replace('bg-indigo-600', 'bg-red-600');
                     isAR = true;
                 } catch (err) {
-                    alert("⚠️ No se puede activar la cámara. Recuerda pulsar el botón 'Abrir en una ventana nueva' en Playcode.");
+                    alert("⚠️ No se puede activar la cámara. Permite el acceso desde Safari.");
                 }
             } else {
                 let tracks = stream.getTracks();
                 tracks.forEach(track => track.stop());
                 videoElement.style.display = 'none';
-                container.classList.add('bg-black');
-                container.classList.remove('bg-transparent');
+                
+                const sliderVal = document.getElementById('time-slider').value;
+                scrubTime(sliderVal);
+                
                 moon.classList.remove('ar-active');
-                btn.innerHTML = "📹 Activar Visor AR";
+                btn.innerHTML = "📹 Modo Cámara (AR)";
                 btn.classList.replace('bg-red-600', 'bg-indigo-600');
                 isAR = false;
             }
         }
+        
+        scrubTime(57);
     </script>
 </body>
 </html>
