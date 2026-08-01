@@ -98,7 +98,7 @@
                     
                     <input type="range" id="time-slider" min="0" max="110" value="57" oninput="scrubTime(this.value)">
                     
-                    <!-- NUEVO: BOTÓN DE SALTO AUTOMÁTICO -->
+                    <!-- BOTÓN DE SALTO AUTOMÁTICO -->
                     <div class="mt-4 flex justify-center border-t border-gray-800 pt-3">
                         <button id="btn-quick-max" onclick="jumpToMax()" class="bg-indigo-600/20 hover:bg-indigo-600/50 border border-indigo-500/30 text-indigo-300 text-[11px] uppercase tracking-widest font-bold py-2 px-5 rounded-full transition-all shadow-lg shadow-indigo-500/10">
                             ⚡ Saltar al Máximo Local (20:27)
@@ -188,11 +188,11 @@
                         <p class="text-sm text-gray-400 leading-relaxed mb-6">Equipamiento obligatorio con filtro solar ISO 12312-2. Evita falsificaciones asegurándote de comprar a través de enlaces verificados.</p>
                     </div>
                     <div class="flex flex-col gap-3">
-                        <a href="TU_ENLACE_DE_GAFAS_AQUI" target="_blank" class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:scale-105 text-black font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
+                        <a href="https://amzn.to/4ceuUQ1" target="_blank" class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:scale-105 text-black font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
                             <span>🛒 Amazon</span>
                             <span class="text-[10px] uppercase tracking-wider bg-black/20 px-2 py-1 rounded">Envío Rápido</span>
                         </a>
-                        <a href="TU_ENLACE_ALIEXPRESS_AQUI" target="_blank" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:scale-105 text-white font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
+                        <a href="https://s.click.aliexpress.com/e/_c30HivPz" target="_blank" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:scale-105 text-white font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
                             <span>🛒 AliExpress</span>
                         </a>
                     </div>
@@ -205,11 +205,11 @@
                         <p class="text-sm text-gray-400 leading-relaxed mb-6">Láminas especiales para adaptar a objetivos de cámaras réflex o móviles. Esencial para no fundir el sensor al hacer fotos.</p>
                     </div>
                     <div class="flex flex-col gap-3">
-                        <a href="TU_ENLACE_DE_FILTROS_AQUI" target="_blank" class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:scale-105 text-black font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
+                        <a href="https://amzn.to/4yTwW1G" target="_blank" class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:scale-105 text-black font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
                             <span>🛒 Amazon</span>
                             <span class="text-[10px] uppercase tracking-wider bg-black/20 px-2 py-1 rounded">Envío Rápido</span>
                         </a>
-                        <a href="TU_ENLACE_ALIEXPRESS_AQUI" target="_blank" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:scale-105 text-white font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
+                        <a href="https://s.click.aliexpress.com/e/_c3ODtKzl" target="_blank" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:scale-105 text-white font-bold py-3 px-4 rounded-xl text-center transition-transform flex items-center justify-center gap-2">
                             <span>🛒 AliExpress</span>
                         </a>
                     </div>
@@ -222,13 +222,11 @@
             <div class="glass p-6 md:p-8 rounded-2xl">
                 <h3 class="text-xl font-bold mb-2">Contacto y Sugerencias</h3>
                 <p class="text-sm text-gray-400 mb-6">¿Quieres colaborar, reportar un bug en el visor o anunciar tu marca durante el evento? Escríbenos.</p>
-                <!-- Fíjate que hemos añadido el action, el method="POST", los "name" y "required" -->
-<form class="space-y-4" action="https://formspree.io/f/mgogjynp" method="POST">
-    <input type="email" name="email" required placeholder="Tu correo electrónico" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition">
-    <textarea name="mensaje" required placeholder="Mensaje..." rows="3" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition"></textarea>
-    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition">Enviar Mensaje</button>
-</form>
-
+                <form class="space-y-4" action="https://formspree.io/f/mgogjynp" method="POST">
+                    <input type="email" name="email" required placeholder="Tu correo electrónico" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition">
+                    <textarea name="mensaje" required placeholder="Mensaje..." rows="3" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition"></textarea>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition">Enviar Mensaje</button>
+                </form>
             </div>
             <div class="glass p-6 md:p-8 rounded-2xl flex flex-col justify-center items-center text-center">
                 <h3 class="text-xl font-bold mb-2">Soporte del Proyecto</h3>
@@ -337,7 +335,7 @@
             marker.on('click', () => { curData = prov; actualizarPanel(); map.flyTo([prov.lat, prov.lng], 7, { duration: 1.2 }); });
         });
 
-        // NUEVO: DOBLE CAPA DE SOMBRA (PENUMBRA + UMBRA CON DATOS)
+        // DOBLE CAPA DE SOMBRA (PENUMBRA + UMBRA CON DATOS)
         const penumbraCircle = L.circle([44, -12], {
             color: 'transparent',
             fillColor: '#000000',
@@ -433,7 +431,7 @@
             scrubTime(sliderVal);
         }
 
-        // NUEVO: FUNCIÓN PARA SALTAR DIRECTO AL MÁXIMO
+        // FUNCIÓN PARA SALTAR DIRECTO AL MÁXIMO
         function jumpToMax() {
             document.getElementById('time-slider').value = localMaxMins;
             scrubTime(localMaxMins);
