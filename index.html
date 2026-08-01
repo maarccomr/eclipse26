@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EclipseTracker AR - 2026</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #050505; color: #f8fafc; overflow-x: hidden; }
+        .data-font { font-family: 'Space Mono', monospace; }
+        
+        .stars-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; background: radial-gradient(circle at center, #1a1025 0%, #050505 100%); }
+        .stars-bg::after { content: ""; position: absolute; top: 0; left: 0; width: 200%; height: 200%; background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 60px 60px; opacity: 0.15; animation: moveStars 100s linear infinite; }
+        @keyframes moveStars { from { transform: translate(0, 0); } to { transform: translate(-50%, -50%); } }
+
+        .glass { background: rgba(20, 20, 25, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); }
+        .ad-space { border: 2px dashed rgba(255, 255, 255, 0.2); background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; }
+
+        #map { height: 420px; width: 100%; border-radius: 1rem; background: #0a0a0a; z-index: 10; }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #1e1b4b; color: #fff; border: 1px solid #4f46e5; }
+
+        .visor-container { position: relative; overflow: hidden; height: 350px; display: flex; justify-content: center; align-items: center; border-radius: 1rem; transition: background 0.3s; }
+        #ar-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; display: none; transform: scaleX(-1); }
+        .sun { position: absolute; z-index: 1; width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle, #fffbe0 0%, #fcd34d 40%, #ea580c 100%); box-shadow: 0 0 50px rgba(234, 88, 12, 0.5), 0 0 100px rgba(234, 88, 12, 0.2); }
+        .moon { position: absolute; z-index: 2; width: 142px; height: 142px; border-radius: 50%; background: #050505; box-shadow: inset -10px 0 20px rgba(255,255,255,0.05); transform: translate(300px, -300px); }
+        .moon.ar-active { background: #000; box-shadow: none; }
+    </style>
+</head>
+<body class="p-4 lg:p-8">
+
+    <div class="stars-bg"></div>
+
+    <div class="max-w-7xl mx-auto space-y-8">
+        
+        <!-- HEADER -->
+        <header class="text-center pt-4">
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-2 uppercase drop-shadow-lg">
+                Eclipse <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-indigo-500">Tracker</span>
+            </h1>
+            <p class="text-indigo-300 font-light tracking-widest text-sm md:text-base mb-4">12 DE AGOSTO 2026 · RED DE MONITOREO ESPAÑOLA</p>
+            
+            <div class="flex justify-center gap-3 md:gap-4 text-center mt-2">
+                <div class="glass p-3 rounded-xl min-w-[70px] md:min-w-[90px]">
+                    <div id="cd-days" class="data-font text-2xl md:text-3xl font-bold text-orange-400">00</div>
+                    <div class="text-[9px] md:text-xs text-gray-400 uppercase tracking-widest mt-1">Días</div>
+                </div>
+                <div class="glass p-3 rounded-xl min-w-[70px] md:min-w-[90px]">
+                    <div id="cd-hours" class="data-font text-2xl md:text-3xl font-bold text-orange-400">00</div>
+                    <div class="text-[9px] md:text-xs text-gray-400 uppercase tracking-widest mt-1">Horas</div>
+                </div>
+                <div class="glass p-3 rounded-xl min-w-[70px] md:min-w-[90px]">
+                    <div id="cd-mins" class="data-font text-2xl md:text-3xl font-bold text-orange-400">00</div>
+                    <div class="text-[9px] md:text-xs text-gray-400 uppercase tracking-widest mt-1">Min</div>
+                </div>
+                <div class="glass p-3 rounded-xl min-w-[70px] md:min-w-[90px]">
+                    <div id="cd-secs" class="data-font text-2xl md:text-3xl font-bold text-indigo-400">00</div>
+                    <div class="text-[9px] md:text-xs text-gray-400 uppercase tracking-widest mt-1">Seg</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- BANNER PUBLICIDAD SUPERIOR -->
+        <div class="w-full h-24 rounded-xl ad-space">
+            Bloque Publicitario (Ej: Google AdSense 728x90)
+        </div>
+
+        <!-- MÓDULO PRINCIPAL: MAPA Y VISOR -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- PANEL MAPA -->
+            <div class="glass p-5 rounded-2xl flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        Mapa Satelital Activo
+                    </h2>
+                    <span class="text-xs text-gray-400">52 Provincias</span>
+                </div>
+                <div id="map" class="shadow-inner border border-gray-800"></div>
+                <p class="text-xs text-gray-400 mt-4 text-center">Navega por el mapa y selecciona cualquier capital de provincia para extraer la telemetría.</p>
+            </div>
+
+            <!-- PANEL VISOR Y TELEMETRÍA -->
+            <div class="flex flex-col gap-6">
+                <div class="glass p-5 rounded-2xl">
+                    <div class="flex justify-between items-end mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-white mb-1">Simulación Óptica</h2>
+                            <p class="text-xs text-indigo-300" id="ui-city-name">Ubicación: Madrid</p>
+                        </div>
+                        <button onclick="toggleAR()" id="btn-ar" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg transition-all flex items-center gap-2">
+                            📹 Activar Visor AR
+                        </button>
+                    </div>
+
+                    <div id="visor-bg" class="visor-container bg-black border border-gray-800">
+                        <video id="ar-video" autoplay playsinline></video>
+                        <div class="sun"></div>
+                        <div id="moon" class="moon"></div>
+                    </div>
+
+                    <button onclick="ejecutarSimulacion()" id="btn-sim" class="w-full mt-4 bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-400 hover:to-pink-500 text-white font-bold py-3 px-4 rounded-xl transition shadow-lg tracking-wide uppercase text-sm">
+                        ▶ Iniciar Tránsito Lunar
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="glass p-4 rounded-xl text-center border-t-2 border-t-orange-500">
+                        <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-widest">Magnitud</div>
+                        <div id="ui-mag" class="data-font text-2xl font-bold text-white">99.9%</div>
+                    </div>
+                    <div class="glass p-4 rounded-xl text-center border-t-2 border-t-indigo-500">
+                        <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-widest">Máximo</div>
+                        <div id="ui-time" class="data-font text-2xl font-bold text-white">20:27</div>
+                        <div class="text-[9px] text-indigo-300 mt-1">Ini: <span id="ui-start">19:30</span> | Fin: <span id="ui-end">21:20</span></div>
+                    </div>
+                    <div class="glass p-4 rounded-xl text-center border-t-2 border-t-yellow-500 md:col-span-2">
+                        <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-widest">Tipo de Evento</div>
+                        <div id="ui-type" class="text-lg font-bold text-yellow-400 mt-1">Parcial Profundo</div>
+                    </div>
+                    <div id="ui-alert-box" class="glass p-4 rounded-xl col-span-2 md:col-span-4 bg-red-900/20 border-t-2 border-t-red-500">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">⚠️</span>
+                            <div>
+                                <div id="ui-alert-title" class="text-xs font-bold text-red-400 uppercase">Seguridad Ocular</div>
+                                <div id="ui-alert" class="text-sm text-gray-300 mt-1">Gafas ISO 12312-2 obligatorias en todo momento. No hay totalidad.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN DE INFORMACIÓN Y CURIOSIDADES -->
+        <section class="glass p-6 md:p-8 rounded-2xl mt-8">
+            <h2 class="text-2xl font-bold mb-6 border-b border-gray-800 pb-4">Fenómeno Astronómico 2026: Lo que debes saber</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <div class="text-3xl mb-3">🕶️</div>
+                    <h3 class="text-lg font-bold text-yellow-400 mb-2">Gafas y Seguridad Ocular</h3>
+                    <p class="text-sm text-gray-300 leading-relaxed">Jamás mires al sol directamente sin protección. Ni gafas de sol, ni radiografías, ni cristales ahumados sirven. Solo es seguro observar el eclipse con <strong>gafas certificadas ISO 12312-2</strong> o cristales de soldador grado 14. Una exposición de pocos segundos sin filtro puede dañar tu retina irreversiblemente.</p>
+                </div>
+                <div>
+                    <div class="text-3xl mb-3">🌇</div>
+                    <h3 class="text-lg font-bold text-orange-400 mb-2">El Eclipse del Ocaso</h3>
+                    <p class="text-sm text-gray-300 leading-relaxed">Lo que hace histórico a este eclipse en España es su baja altura. En lugares como Valencia, Mallorca o Alicante, la Luna tapará al Sol justo mientras este se oculta por el horizonte marino, creando un atardecer apocalíptico y un paisaje fotográfico espectacular e irrepetible.</p>
+                </div>
+                <div>
+                    <div class="text-3xl mb-3">💎</div>
+                    <h3 class="text-lg font-bold text-indigo-400 mb-2">El Anillo de Diamantes</h3>
+                    <p class="text-sm text-gray-300 leading-relaxed">Si estás en la zona de totalidad (como Galicia o Zaragoza), instantes antes de que la Luna cubra el sol al 100%, la luz solar se filtrará por los cráteres y valles lunares creando el famoso efecto de "Perlas de Baily", coronado por un destello cegador conocido como el anillo de diamantes.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN DE CONTACTO -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass p-6 md:p-8 rounded-2xl">
+                <h3 class="text-xl font-bold mb-2">Contacto y Sugerencias</h3>
+                <p class="text-sm text-gray-400 mb-6">¿Quieres colaborar, reportar un bug en el visor o anunciar tu marca durante el evento? Escríbenos.</p>
+                <form class="space-y-4" onsubmit="event.preventDefault(); alert('Este es un formulario de prueba.');">
+                    <input type="email" placeholder="Tu correo electrónico" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition">
+                    <textarea placeholder="Mensaje..." rows="3" class="w-full bg-black/50 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition"></textarea>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition">Enviar Mensaje</button>
+                </form>
+            </div>
+            
+            <div class="glass p-6 md:p-8 rounded-2xl flex flex-col justify-center items-center text-center">
+                <h3 class="text-xl font-bold mb-2">Soporte del Proyecto</h3>
+                <p class="text-sm text-gray-400 mb-6">EclipseTracker es una herramienta gratuita. Si te ha sido útil, ayúdanos a mantener los servidores compartiendo la web.</p>
+                <div class="w-full h-32 rounded-xl ad-space">
+                    Bloque Publicitario (AdSense / Banner Patrocinador)
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="text-center text-xs text-gray-600 py-6">
+            <p>📍 Desarrollado en Madrid, España. Datos astronómicos simulados para el 12 de Agosto de 2026.</p>
+        </footer>
+
+    </div>
+
+    <!-- AQUÍ EMPIEZA EL SCRIPT DE LÓGICA -->
+    <script>
+        const targetDate = new Date('August 12, 2026 19:30:00').getTime();
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = targetDate - now;
+            if (distance < 0) return;
+            
+            document.getElementById('cd-days').innerText = Math.floor(distance / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
+            document.getElementById('cd-hours').innerText = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
+            document.getElementById('cd-mins').innerText = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+            document.getElementById('cd-secs').innerText = Math.floor((distance % (1000 * 60)) / 1000).toString().padStart(2, '0');
+        }
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+
+        const provincias = [
+            { id: 'alava', name: 'Álava (Vitoria)', lat: 42.8467, lng: -2.6716, mag: 1.000, time: '20:27' },
+            { id: 'albacete', name: 'Albacete', lat: 38.9943, lng: -1.8585, mag: 0.950, time: '20:29' },
+            { id: 'alicante', name: 'Alicante', lat: 38.3452, lng: -0.4810, mag: 0.930, time: '20:30' },
+            { id: 'almeria', name: 'Almería', lat: 36.8340, lng: -2.4637, mag: 0.880, time: '20:30' },
+            { id: 'asturias', name: 'Asturias (Oviedo)', lat: 43.3614, lng: -5.8593, mag: 1.000, time: '20:27' },
+            { id: 'avila', name: 'Ávila', lat: 40.6560, lng: -4.6811, mag: 0.990, time: '20:27' },
+            { id: 'badajoz', name: 'Badajoz', lat: 38.8794, lng: -6.9706, mag: 0.930, time: '20:26' },
+            { id: 'baleares', name: 'Baleares (Palma)', lat: 39.5696, lng: 2.6502, mag: 1.000, time: '20:31' },
+            { id: 'barcelona', name: 'Barcelona', lat: 41.3851, lng: 2.1734, mag: 0.990, time: '20:29' },
+            { id: 'burgos', name: 'Burgos', lat: 42.3439, lng: -3.6969, mag: 1.000, time: '20:27' },
+            { id: 'caceres', name: 'Cáceres', lat: 39.4765, lng: -6.3722, mag: 0.960, time: '20:26' },
+            { id: 'cadiz', name: 'Cádiz', lat: 36.5271, lng: -6.2886, mag: 0.860, time: '20:27' },
+            { id: 'cantabria', name: 'Cantabria (Santander)', lat: 43.4623, lng: -3.8099, mag: 1.000, time: '20:27' },
+            { id: 'castellon', name: 'Castellón', lat: 39.9864, lng: -0.0513, mag: 1.000, time: '20:29' },
+            { id: 'ciudadreal', name: 'Ciudad Real', lat: 38.9848, lng: -3.9274, mag: 0.960, time: '20:28' },
+            { id: 'cordoba', name: 'Córdoba', lat: 37.8882, lng: -4.7794, mag: 0.910, time: '20:28' },
+            { id: 'coruna', name: 'A Coruña', lat: 43.3623, lng: -8.4115, mag: 1.000, time: '20:28' },
+            { id: 'cuenca', name: 'Cuenca', lat: 40.0704, lng: -2.1374, mag: 0.990, time: '20:28' },
+            { id: 'girona', name: 'Girona', lat: 41.9794, lng: 2.8214, mag: 0.980, time: '20:29' },
+            { id: 'granada', name: 'Granada', lat: 37.1773, lng: -3.5986, mag: 0.900, time: '20:29' },
+            { id: 'guadalajara', name: 'Guadalajara', lat: 40.6328, lng: -3.1603, mag: 0.990, time: '20:27' },
+            { id: 'guipuzcoa', name: 'Guipúzcoa (S. Sebastián)', lat: 43.3183, lng: -1.9812, mag: 0.990, time: '20:27' },
+            { id: 'huelva', name: 'Huelva', lat: 37.2614, lng: -6.9447, mag: 0.880, time: '20:26' },
+            { id: 'huesca', name: 'Huesca', lat: 42.1401, lng: -0.4089, mag: 1.000, time: '20:28' },
+            { id: 'jaen', name: 'Jaén', lat: 37.7796, lng: -3.7849, mag: 0.910, time: '20:29' },
+            { id: 'leon', name: 'León', lat: 42.5987, lng: -5.5671, mag: 1.000, time: '20:27' },
+            { id: 'lleida', name: 'Lleida', lat: 41.6167, lng: 0.6222, mag: 1.000, time: '20:28' },
+            { id: 'larioja', name: 'La Rioja (Logroño)', lat: 42.4667, lng: -2.4500, mag: 1.000, time: '20:27' },
+            { id: 'lugo', name: 'Lugo', lat: 43.0120, lng: -7.5560, mag: 1.000, time: '20:27' },
+            { id: 'madrid', name: 'Madrid', lat: 40.4168, lng: -3.7038, mag: 0.999, time: '20:27' },
+            { id: 'malaga', name: 'Málaga', lat: 36.7213, lng: -4.4214, mag: 0.880, time: '20:29' },
+            { id: 'murcia', name: 'Murcia', lat: 37.9922, lng: -1.1307, mag: 0.920, time: '20:30' },
+            { id: 'navarra', name: 'Navarra (Pamplona)', lat: 42.8125, lng: -1.6458, mag: 0.990, time: '20:27' },
+            { id: 'ourense', name: 'Ourense', lat: 42.3358, lng: -7.8639, mag: 1.000, time: '20:27' },
+            { id: 'palencia', name: 'Palencia', lat: 42.0095, lng: -4.5241, mag: 1.000, time: '20:27' },
+            { id: 'pontevedra', name: 'Pontevedra', lat: 42.4310, lng: -8.6444, mag: 0.990, time: '20:27' },
+            { id: 'salamanca', name: 'Salamanca', lat: 40.9701, lng: -5.6635, mag: 0.980, time: '20:27' },
+            { id: 'segovia', name: 'Segovia', lat: 40.9429, lng: -4.1088, mag: 0.990, time: '20:27' },
+            { id: 'sevilla', name: 'Sevilla', lat: 37.3891, lng: -5.9845, mag: 0.900, time: '20:27' },
+            { id: 'soria', name: 'Soria', lat: 41.7640, lng: -2.4688, mag: 1.000, time: '20:27' },
+            { id: 'tarragona', name: 'Tarragona', lat: 41.1189, lng: 1.2445, mag: 1.000, time: '20:29' },
+            { id: 'tenerife', name: 'S.C. Tenerife', lat: 28.4636, lng: -16.2518, mag: 0.650, time: '19:45' },
+            { id: 'laspalmas', name: 'Las Palmas', lat: 28.1235, lng: -15.4363, mag: 0.650, time: '19:46' },
+            { id: 'teruel', name: 'Teruel', lat: 40.3456, lng: -1.1065, mag: 0.990, time: '20:28' },
+            { id: 'toledo', name: 'Toledo', lat: 39.8628, lng: -4.0273, mag: 0.980, time: '20:27' },
+            { id: 'valencia', name: 'Valencia', lat: 39.4699, lng: -0.3763, mag: 0.960, time: '20:29' },
+            { id: 'valladolid', name: 'Valladolid', lat: 41.6523, lng: -4.7245, mag: 1.000, time: '20:27' },
+            { id: 'vizcaya', name: 'Vizcaya (Bilbao)', lat: 43.2630, lng: -2.9350, mag: 1.000, time: '20:27' },
+            { id: 'zamora', name: 'Zamora', lat: 41.5034, lng: -5.7466, mag: 1.000, time: '20:27' },
+            { id: 'zaragoza', name: 'Zaragoza', lat: 41.6488, lng: -0.8891, mag: 1.000, time: '20:28' },
+            { id: 'ceuta', name: 'Ceuta', lat: 35.8894, lng: -5.3213, mag: 0.830, time: '20:28' },
+            { id: 'melilla', name: 'Melilla', lat: 35.2923, lng: -2.9381, mag: 0.810, time: '20:29' }
+        ];
+
+        provincias.forEach(p => {
+            let [h, m] = p.time.split(':').map(Number);
+            let startM = m - 57; let startH = h;
+            if (startM < 0) { startM += 60; startH -= 1; }
+            p.start = `${startH}:${startM.toString().padStart(2, '0')}`;
+            p.end = p.name.includes("Tenerife") || p.name.includes("Palmas") ? "20:55" : "21:20 (Ocaso)";
+        });
+
+        provincias.sort((a, b) => a.name.localeCompare(b.name));
+
+        let curData = provincias.find(p => p.id === 'madrid'); 
+        let isAR = false;
+        let animando = false;
+
+        const map = L.map('map', { zoomControl: true }).setView([40.0, -3.0], 5);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 10 }).addTo(map);
+
+        provincias.forEach(prov => {
+            let color = prov.mag === 1 ? '#eab308' : (prov.mag > 0.95 ? '#f97316' : '#6366f1');
+            const marker = L.circleMarker([prov.lat, prov.lng], { radius: prov.mag === 1 ? 7 : 5, fillColor: color, color: '#fff', weight: 1, fillOpacity: 0.8 }).addTo(map);
+            marker.bindTooltip(`<b>${prov.name}</b><br>Mag: ${(prov.mag*100).toFixed(1)}%`);
+            marker.on('click', () => { curData = prov; actualizarPanel(); map.flyTo([prov.lat, prov.lng], 7, { duration: 1.2 }); });
+        });
+
+        function actualizarPanel() {
+            document.getElementById('ui-city-name').innerText = `Ubicación: ${curData.name}`;
+            document.getElementById('ui-mag').innerText = `${(curData.mag * 100).toFixed(1)}%`;
+            document.getElementById('ui-time').innerText = curData.time;
+            document.getElementById('ui-start').innerText = curData.start;
+            document.getElementById('ui-end').innerText = curData.end;
+            
+            const uiType = document.getElementById('ui-type');
+            const uiAlertBox = document.getElementById('ui-alert-box');
+            const uiAlertTitle = document.getElementById('ui-alert-title');
+            const uiAlert = document.getElementById('ui-alert');
+            
+            if (curData.mag === 1) {
+                uiType.innerText = "TOTALIDAD MÁXIMA";
+                uiType.className = "text-lg font-bold text-yellow-400 mt-1 animate-pulse";
+                uiAlertTitle.innerText = "FASE SEGURA ALCANZADA";
+                uiAlertTitle.className = "text-xs font-bold text-green-400 uppercase";
+                uiAlert.innerText = "Puede retirar las gafas únicamente durante los segundos de oscuridad total.";
+                uiAlertBox.className = "glass p-4 rounded-xl col-span-2 md:col-span-4 bg-green-900/20 border-t-2 border-t-green-500";
+            } else {
+                uiType.innerText = curData.mag > 0.95 ? "PARCIAL PROFUNDO" : "PARCIAL";
+                uiType.className = "text-lg font-bold text-yellow-400 mt-1";
+                uiAlertTitle.innerText = "Protocolo de Seguridad Ocular";
+                uiAlertTitle.className = "text-xs font-bold text-red-400 uppercase";
+                uiAlert.innerText = "Gafas ISO 12312-2 obligatorias en todo momento. No hay totalidad.";
+                uiAlertBox.className = "glass p-4 rounded-xl col-span-2 md:col-span-4 bg-red-900/20 border-t-2 border-t-red-500";
+            }
+            const moon = document.getElementById('moon');
+            moon.style.transition = 'none';
+            moon.style.transform = `translate(300px, -300px)`;
+        }
+
+        function ejecutarSimulacion() {
+            if (animando) return;
+            animando = true;
+            const btn = document.getElementById('btn-sim');
+            btn.innerText = "⚙ Calculando y ejecutando órbita...";
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const moon = document.getElementById('moon');
+            const diametroSol = 140;
+            const offsetPixeles = diametroSol * (1 - curData.mag); 
+            
+            moon.style.transition = 'none';
+            moon.style.transform = `translate(300px, -300px)`;
+            
+            setTimeout(() => {
+                moon.style.transition = 'transform 3.5s linear';
+                moon.style.transform = `translate(${offsetPixeles}px, -${offsetPixeles}px)`;
+                setTimeout(() => {
+                    moon.style.transition = 'transform 3.5s linear';
+                    moon.style.transform = `translate(-300px, 300px)`;
+                    setTimeout(() => { 
+                        animando = false; 
+                        btn.innerText = "▶ Iniciar Tránsito Lunar"; 
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed'); 
+                    }, 3500);
+                }, 4500);
+            }, 50);
+        }
+
+        let stream = null;
+        async function toggleAR() {
+            const videoElement = document.getElementById('ar-video');
+            const container = document.getElementById('visor-bg');
+            const moon = document.getElementById('moon');
+            const btn = document.getElementById('btn-ar');
+
+            if (!isAR) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    videoElement.srcObject = stream;
+                    videoElement.style.display = 'block';
+                    container.classList.remove('bg-black');
+                    container.classList.add('bg-transparent');
+                    moon.classList.add('ar-active');
+                    btn.innerHTML = "❌ Cerrar Visor AR";
+                    btn.classList.replace('bg-indigo-600', 'bg-red-600');
+                    isAR = true;
+                } catch (err) {
+                    alert("⚠️ No se puede activar la cámara. Recuerda pulsar el botón 'Abrir en una ventana nueva' en Playcode.");
+                }
+            } else {
+                let tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+                videoElement.style.display = 'none';
+                container.classList.add('bg-black');
+                container.classList.remove('bg-transparent');
+                moon.classList.remove('ar-active');
+                btn.innerHTML = "📹 Activar Visor AR";
+                btn.classList.replace('bg-red-600', 'bg-indigo-600');
+                isAR = false;
+            }
+        }
+    </script>
+</body>
+</html>
