@@ -370,28 +370,45 @@
             </div>
         `, { sticky: true });
 
-        // LÓGICA DEL SLIDER
+        // LÓGICA DEL SLIDER REESCRITA (Sincronización exacta local)
         function scrubTime(val) {
             const minutesFromStart = parseInt(val);
             let h = 19 + Math.floor((30 + minutesFromStart) / 60);
             let m = (30 + minutesFromStart) % 60;
             document.getElementById('slider-time-display').innerText = `${h}:${m.toString().padStart(2, '0')} CEST`;
 
-            const startLat = 44.5, startLng = -12;
-            const endLat = 38.0, endLng = 5.0;
+            // CORRECCIÓN: Hacemos que la sombra en el mapa pase EXACTAMENTE 
+            // por las coordenadas de la provincia en su minuto de máximo oscurecimiento
+            const startLat = curData.lat + 6;
+            const startLng = curData.lng - 12;
+            const endLat = curData.lat - 6;
+            const endLng = curData.lng + 12;
+
+            let currentLat, currentLng, offsetX;
             
-            const progress = minutesFromStart / 110;
-            const currentLat = startLat + (endLat - startLat) * progress;
-            const currentLng = startLng + (endLng - startLng) * progress;
+            if (minutesFromStart <= localMaxMins) {
+                // Fase de entrada
+                const p = minutesFromStart / localMaxMins;
+                currentLat = startLat + (curData.lat - startLat) * p;
+                currentLng = startLng + (curData.lng - startLng) * p;
+                // La Luna en el visor va de -300px hasta 0 (centro exacto)
+                offsetX = -300 * (1 - p);
+            } else {
+                // Fase de salida
+                const p = (minutesFromStart - localMaxMins) / (110 - localMaxMins);
+                currentLat = curData.lat + (endLat - curData.lat) * p;
+                currentLng = curData.lng + (endLng - curData.lng) * p;
+                // La Luna en el visor va de 0 hasta 300px
+                offsetX = 300 * p;
+            }
             
-            // Actualizar ambas capas de la sombra
+            // Actualizar ambas capas de la sombra en el mapa
             penumbraCircle.setLatLng([currentLat, currentLng]);
             umbraCircle.setLatLng([currentLat, currentLng]);
 
             const visorBg = document.getElementById('visor-bg');
             const moon = document.getElementById('moon');
             
-            const offsetX = -300 + (600 * progress);
             const diametroSol = 140;
             const yOffsetCity = diametroSol * (1 - curData.mag); 
             
